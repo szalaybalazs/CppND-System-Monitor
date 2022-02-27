@@ -1,33 +1,67 @@
+#include "process.h"
+
 #include <unistd.h>
+
+#include <array>
 #include <cctype>
+#include <cstddef>
+#include <cstdio>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-
-#include "process.h"
 
 using std::string;
 using std::to_string;
 using std::vector;
 
-// TODO: Return this process's ID
-int Process::Pid() { return 0; }
+int Process::Pid() { return _pid; }
 
-// TODO: Return this process's CPU utilization
-float Process::CpuUtilization() { return 0; }
+float Process::CpuUtilization() { return _cpu; }
 
-// TODO: Return the command that generated this process
-string Process::Command() { return string(); }
+string Process::Command() { return _cmd; }
 
-// TODO: Return this process's memory utilization
-string Process::Ram() { return string(); }
+/**
+ * @brief Get the current ram usage of the process
+ *
+ * @return string
+ */
+string Process::Ram() {
+  std::stringstream ss;
+  ss << std::fixed << std::setprecision(2) << _ram;
+  std::string fixed = ss.str();
 
-// TODO: Return the user (name) that generated this process
-string Process::User() { return string(); }
+  return fixed;
+}
 
-// TODO: Return the age of this process (in seconds)
-long int Process::UpTime() { return 0; }
+string Process::User() { return _user; }
 
-// TODO: Overload the "less than" comparison operator for Process objects
-// REMOVE: [[maybe_unused]] once you define the function
-bool Process::operator<(Process const& a[[maybe_unused]]) const { return true; }
+std::string Process::UpTime() { return _time; }
+
+/**
+ * @brief Sort by ram usage
+ *
+ * @param a
+ * @return true
+ * @return false
+ */
+bool Process::operator<(Process const& a) const { return a._ram < _ram; }
+
+/**
+ * @brief Construct a new Process:: Process object
+ * Parse the input process line, produced by the ps command
+ * Save local variables
+ * @param processline
+ */
+Process::Process(std::string processline) {
+  std::istringstream lstream(processline);
+  lstream >> _pid >> _cmd >> _cpu >> _ram >> _user >> _time;
+
+  // Convert
+  _ram = (_ram / (1024));
+  _cpu = _cpu / 100;
+}

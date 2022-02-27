@@ -1,3 +1,7 @@
+CXXFLAGS    +=  -W -Wextra -Wall -Werror -ansi -pedantic                                                                                                                         
+CXXFLAGS    +=  -pthread --std=c++11 -Iincludes -Ilibs/c++ -I/usr/local/opt/ncurses/include
+LDFLAGS     +=  -lncurses -L/usr/local/opt/ncurses/lib
+
 .PHONY: all
 all: format test build
 

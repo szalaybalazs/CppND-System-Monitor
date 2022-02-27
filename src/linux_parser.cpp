@@ -1,22 +1,38 @@
+#include "linux_parser.h"
+
 #include <dirent.h>
 #include <unistd.h>
+
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include "linux_parser.h"
 
 using std::stof;
 using std::string;
 using std::to_string;
 using std::vector;
 
+/**
+ * @brief Get the path for the file
+ * Only used on MAC_OS, to access the mock data
+ * @param path
+ * @return string
+ */
+string LinuxParser::GetFilePath(string path) {
+#if __APPLE__
+  return kBasePath + path;
+#else
+  return path;
+#endif
+}
+
 // DONE: An example of how to read data from the filesystem
 string LinuxParser::OperatingSystem() {
   string line;
   string key;
   string value;
-  std::ifstream filestream(kOSPath);
+  std::ifstream filestream(GetFilePath(kOSPath));
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) {
       std::replace(line.begin(), line.end(), ' ', '_');
@@ -31,6 +47,7 @@ string LinuxParser::OperatingSystem() {
       }
     }
   }
+
   return value;
 }
 
@@ -38,7 +55,7 @@ string LinuxParser::OperatingSystem() {
 string LinuxParser::Kernel() {
   string os, kernel, version;
   string line;
-  std::ifstream stream(kProcDirectory + kVersionFilename);
+  std::ifstream stream(GetFilePath(kProcDirectory + kVersionFilename));
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
@@ -50,7 +67,7 @@ string LinuxParser::Kernel() {
 // BONUS: Update this to use std::filesystem
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
-  DIR* directory = opendir(kProcDirectory.c_str());
+  DIR* directory = opendir(GetFilePath(kProcDirectory).c_str());
   struct dirent* file;
   while ((file = readdir(directory)) != nullptr) {
     // Is this a directory?
@@ -67,50 +84,101 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
-// TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+/**
+ * @brief Calculate the utilisation of the memory
+ *
+ * @return float
+ */
+float LinuxParser::MemoryUtilization() {
+  string line;
+  float total{1};
+  float available{0};
 
-// TODO: Read and return the system uptime
-long LinuxParser::UpTime() { return 0; }
+  std::string name;
+  float value;
 
-// TODO: Read and return the number of jiffies for the system
-long LinuxParser::Jiffies() { return 0; }
+  // Read the file and parse it line by line
+  std::ifstream stream(GetFilePath(kProcDirectory + kMeminfoFilename));
+  if (stream.is_open()) {
+    while (std::getline(stream, line)) {
+      std::istringstream linestream(line);
+      if (linestream >> name >> value) {
+        // Save the values if the keys match either memtotal, or memavailable
+        if (name == "MemTotal:") total = value;
+        if (name == "MemAvailable:") available = value;
 
-// TODO: Read and return the number of active jiffies for a PID
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
+        // We can break, if both of the values are greater than zero;
+        // To prevent further, unnecesarry looping
+        if (total && available) break;
+      } else {
+        break;
+      }
+    }
+  }
 
-// TODO: Read and return the number of active jiffies for the system
-long LinuxParser::ActiveJiffies() { return 0; }
+  return available / total;
+}
 
-// TODO: Read and return the number of idle jiffies for the system
-long LinuxParser::IdleJiffies() { return 0; }
+/**
+ * @brief Read and return the uptime of the computer
+ *
+ * @return long
+ */
+long LinuxParser::UpTime() {
+  string line;
+  long uptime{0};
 
-// TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+  // Load and parse file
+  std::ifstream stream(GetFilePath(kProcDirectory + kUptimeFilename));
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream linestream(line);
+    linestream >> uptime;
+  }
 
-// TODO: Read and return the total number of processes
-int LinuxParser::TotalProcesses() { return 0; }
+  return uptime;
+}
 
-// TODO: Read and return the number of running processes
-int LinuxParser::RunningProcesses() { return 0; }
+/**
+ * @brief Read and return the total number of processes
+ *
+ * @return int
+ */
+int LinuxParser::TotalProcesses() {
+  string line;
 
-// TODO: Read and return the command associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Command(int pid[[maybe_unused]]) { return string(); }
+  std::ifstream stream(GetFilePath(kProcDirectory + kStatFilename));
+  if (stream.is_open()) {
+    while (std::getline(stream, line)) {
+      std::istringstream linestream(line);
+      string name;
+      int value{0};
+      if (linestream >> name >> value) {
+        if (name == "processes") return value;
+      }
+    }
+  }
+  return 0;
+}
 
-// TODO: Read and return the memory used by a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Ram(int pid[[maybe_unused]]) { return string(); }
+/**
+ * @brief Read and return the total number of processes
+ *
+ * @return int
+ */
+int LinuxParser::RunningProcesses() {
+  string line;
 
-// TODO: Read and return the user ID associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Uid(int pid[[maybe_unused]]) { return string(); }
-
-// TODO: Read and return the user associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::User(int pid[[maybe_unused]]) { return string(); }
-
-// TODO: Read and return the uptime of a process
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::UpTime(int pid[[maybe_unused]]) { return 0; }
+  std::ifstream stream(GetFilePath(kProcDirectory + kStatFilename));
+  if (stream.is_open()) {
+    while (std::getline(stream, line)) {
+      std::istringstream linestream(line);
+      string name;
+      int value{0};
+      if (linestream >> name >> value) {
+        if (name == "procs_running") return value;
+      }
+    }
+  }
+  return 0;
+}

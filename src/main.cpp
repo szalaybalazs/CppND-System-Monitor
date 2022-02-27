@@ -1,3 +1,5 @@
+#define NCURSES_OPAQUE false
+
 #include "ncurses_display.h"
 #include "system.h"
 
